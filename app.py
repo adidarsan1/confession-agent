@@ -80,14 +80,12 @@ if st.button("Generate Legal Confession Draft", type="primary"):
         with st.spinner("Drafting Confession Statement bypasses Streamlit limits..."):
             try:
                 # Direct REST API call bypassing any older library versions in Streamlit
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key_input}"
+                # Switched to the universally supported 'gemini-pro' model to resolve the 404 error
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key_input}"
                 
                 payload = {
-                    "systemInstruction": {
-                        "parts": [{"text": IO_SYSTEM_PROMPT}]
-                    },
                     "contents": [{
-                        "parts": [{"text": colloquial_input}]
+                        "parts": [{"text": IO_SYSTEM_PROMPT + "\n\n**Raw Input:**\n" + colloquial_input}]
                     }],
                     "generationConfig": {
                         "temperature": 0.3
