@@ -3,7 +3,7 @@ import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 
-# Load environment variables (if any .env file is present)
+# Load environment variables (mostly for local use)
 load_dotenv()
 
 # App UI Configuration
@@ -54,7 +54,7 @@ colloquial_input = st.text_area(
     placeholder="Example: Nan thaan kathi eduthu kuthinen, adhu selva layer la olichi vechiruken..."
 )
 
-# System Prompt Context
+# System Prompt Context (Appended directly to prompt to support older API versions)
 IO_SYSTEM_PROMPT = """
 **Role:** Senior Investigation Officer (IO) & Legal Drafting Expert (Tamil Nadu Police Standard).
 **Task:** Generate 100% Legally Admissible Confession Statements in Formal Tamil.
@@ -69,6 +69,9 @@ IO_SYSTEM_PROMPT = """
 - Potential Defense Loopholes (வழக்கின் ஓட்டைகள்).
 - Professional Confession Draft (தூய தமிழ் நீதிமன்ற நடைமுறை).
 - Mahazar/Recovery Checklist (IO-க்கான குறிப்புகள்).
+
+-----------------------------
+**USER INPUT TO CONVERT:**
 """
 
 # Generation Logic
@@ -80,14 +83,14 @@ if st.button("Generate Legal Confession Draft", type="primary"):
     else:
         with st.spinner("Drafting Confession Statement..."):
             try:
-                # Initialize Gemini Model
-                model = genai.GenerativeModel(
-                    model_name="gemini-1.5-flash",
-                    system_instruction=IO_SYSTEM_PROMPT
-                )
-
+                # Using gemini-pro which is universally supported across all API keys
+                model = genai.GenerativeModel("gemini-pro")
+                
+                # Combine System Prompt with User Input to avoid 'system_instruction' dependency
+                full_prompt = IO_SYSTEM_PROMPT + colloquial_input
+                
                 # Generate Content
-                response = model.generate_content(colloquial_input)
+                response = model.generate_content(full_prompt)
                 
                 st.success("✅ Draft Generated Successfully!")
                 st.markdown("---")
