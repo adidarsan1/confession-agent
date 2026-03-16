@@ -1,6 +1,5 @@
 import streamlit as st
-import requests
-import json
+import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 
@@ -25,7 +24,9 @@ api_key_input = st.sidebar.text_input(
     value=os.getenv("GEMINI_API_KEY", "")
 )
 
-if not api_key_input:
+if api_key_input:
+    genai.configure(api_key=api_key_input)
+else:
     st.sidebar.warning("⚠️ Please enter your Gemini API Key to continue.")
 
 st.sidebar.markdown("---")
@@ -68,7 +69,30 @@ IO_SYSTEM_PROMPT = """
 - Potential Defense Loopholes (வழக்கின் ஓட்டைகள்).
 - Professional Confession Draft (தூய தமிழ் நீதிமன்ற நடைமுறை).
 - Mahazar/Recovery Checklist (IO-க்கான குறிப்புகள்).
+
+-----------------------------
+**USER INPUT TO CONVERT:**
 """
+
+def generate_confession(api_key, input_text):
+    """Attempts generation with fallback model names to guarantee success."""
+    fallback_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro", "gemini-1.0-pro"]
+    full_prompt = IO_SYSTEM_PROMPT + "\n\n" + input_text
+    
+    last_error = None
+    
+    for model_name in fallback_models:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(full_prompt)
+            # If successful, return the valid text and model name
+            return response.text, model_name
+        except Exception as e:
+            last_error = str(e)
+            continue
+            
+    # If all models failed
+    raise Exception(f"All models failed. Last error: {last_error}")
 
 # Generation Logic
 if st.button("Generate Legal Confession Draft", type="primary"):
@@ -77,51 +101,25 @@ if st.button("Generate Legal Confession Draft", type="primary"):
     elif not colloquial_input.strip():
         st.warning("⚠️ Please provide the input case details.")
     else:
-        with st.spinner("Drafting Confession Statement bypasses Streamlit limits..."):
+        with st.spinner("Drafting Confession Statement... (This may take a moment)"):
             try:
-                # Direct REST API call bypassing any older library versions in Streamlit
-                # Switched to the universally supported 'gemini-pro' model to resolve the 404 error
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key_input}"
+                draft_text, used_model = generate_confession(api_key_input, colloquial_input)
                 
-                payload = {
-                    "contents": [{
-                        "parts": [{"text": IO_SYSTEM_PROMPT + "\n\n**Raw Input:**\n" + colloquial_input}]
-                    }],
-                    "generationConfig": {
-                        "temperature": 0.3
-                    }
-                }
+                st.success(f"✅ Draft Generated Successfully! (Using model: {used_model})")
+                st.markdown("---")
                 
-                headers = {'Content-Type': 'application/json'}
+                # Output Sections
+                st.header("2. Generated Draft & Analysis")
+                st.markdown(draft_text)
                 
-                response = requests.post(url, headers=headers, data=json.dumps(payload))
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    
-                    # Check if there are candidates
-                    if 'candidates' in result and len(result['candidates']) > 0:
-                        draft = result['candidates'][0]['content']['parts'][0]['text']
-                        
-                        st.success("✅ Draft Generated Successfully!")
-                        st.markdown("---")
-                        
-                        # Output Sections
-                        st.header("2. Generated Draft & Analysis")
-                        st.markdown(draft)
-                        
-                        # Download Button
-                        st.download_button(
-                            label="Download Draft (Text)",
-                            data=draft,
-                            file_name="confession_draft.txt",
-                            mime="text/plain"
-                        )
-                    else:
-                        st.error("❌ API returned an empty response. Please review your input.")
-                else:
-                    error_msg = response.json().get('error', {}).get('message', 'Unknown Error')
-                    st.error(f"❌ API Error: {response.status_code} - {error_msg}")
+                # Download Button
+                st.download_button(
+                    label="Download Draft (Text)",
+                    data=draft_text,
+                    file_name="confession_draft.txt",
+                    mime="text/plain"
+                )
 
             except Exception as e:
-                st.error(f"❌ An error occurred: {str(e)}")
+                st.error(f"❌ Critical API Error: {str(e)}")
+                st.info("Try generating a completely fresh API key from Google AI Studio. Make sure Billing is enabled on your Cloud Project if you are using an old key.")
