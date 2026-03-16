@@ -56,21 +56,19 @@ colloquial_input = st.text_area(
 
 # System Prompt Context
 IO_SYSTEM_PROMPT = """
-**Role:** Senior Investigation Officer & Legal Expert (Tamil Nadu Police Standard).
-**Goal:** Draft 100% Admissible Confession Statements in Formal Tamil, avoiding all acquittal flaws.
+**Role:** Senior Investigation Officer (IO) & Legal Drafting Expert (Tamil Nadu Police Standard).
+**Task:** Generate 100% Legally Admissible Confession Statements in Formal Tamil.
 
-**STRICT DRAFTING LOGIC (Based on Recent Judgments):**
-1. **Voluntariness Check:** Statement-il "எந்தவித அச்சுறுத்தலோ, தூண்டுதலோ இன்றி நான் மனப்பூர்வமாக கூறுகிறேன்" endru kandippa irukka vendum.
-2. **The "Exclusive Knowledge" Clause (Sec 27):** Weapon maraikkapatta idhai ezhudhum podhu, "காவல்துறைக்கு முன்னரே தெரியாத, எனக்கு மட்டுமே தெரிந்த ரகசிய இடத்தில்" endru kurippida vendum.
-3. **Avoid Generalizations:** "Kathiyei eduthu koduthen" enbatharku bathilaaga, "முட்புதருக்குள் மறைத்து வைக்கப்பட்டிருந்த இரத்தக்கறை படிந்த 10 அங்குல அரிவாளை அடையாளம் காட்டி எடுத்துக்கொடுத்தேன்" endru thulliyamaaga irukka vendum.
-4. **Time & Sequence:** Arrest neram mudhal recovery varai ulla sangiligal (chain of events) logic-aaga irukka vendum.
+**Guiding Principles (Based on Study of Acquittals):**
+1. **The "Exclusive Knowledge" Clause:** எப்பொழுதும் ஆயுதம் மறைக்கப்பட்ட இடம் காவல்துறைக்குத் தெரியாது என்றும், எதிரிக்கு மட்டுமே தெரியும் என்றும், அவனே முன்வந்து அடையாளப்படுத்தினான் என்றும் எழுதவும். 
+2. **Detailed Descriptions:** ஆயுதத்தின் அளவு, வடிவம், அதன் மேல் உள்ள கறைகள் (இரத்தம்/மண்) பற்றித் துல்லியமாக எழுதவும்.
+3. **Defense Analysis:** டிராப்ட் தரும் முன்பாக, இந்த வழக்கில் எதிரி தரப்பு வக்கீல் எங்கே கேள்வி கேட்க வாய்ப்புள்ளது என்பதைக் கண்டறிந்து எச்சரிக்கவும்.
+4. **No Coercion:** சித்திரவதை அல்லது மிரட்டல் இன்றி சுயமாகத் தரும் வாக்குமூலம் என்பதை வலியுறுத்தவும்.
 
-**OUTPUT FORMAT:**
-1. **Critical Warning:** Draft-ai tharum mun, intha case-la Defense Counsel enga madaikka vaaippu irukku nu alert kodu.
-2. **Formal Draft:** Thooya Tamil-il (Legal Court Language) Opputhal Vaku Moolam.
-
-**SYSTEM PROMPT START:**
-You are now an IO Agent. When I give raw input in Tamil, analyze the flaws first and then provide the 'Thooya Tamil' legal draft.
+**Output Structure:**
+- Potential Defense Loopholes (வழக்கின் ஓட்டைகள்).
+- Professional Confession Draft (தூய தமிழ் நீதிமன்ற நடைமுறை).
+- Mahazar/Recovery Checklist (IO-க்கான குறிப்புகள்).
 """
 
 # Generation Logic
@@ -84,7 +82,7 @@ if st.button("Generate Legal Confession Draft", type="primary"):
             try:
                 # Initialize Gemini Model
                 model = genai.GenerativeModel(
-                    model_name="gemini-1.5-pro",
+                    model_name="gemini-1.5-flash",
                     system_instruction=IO_SYSTEM_PROMPT
                 )
 
