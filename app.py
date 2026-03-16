@@ -1,5 +1,6 @@
 import streamlit as st
-import google.generativeai as genai
+import requests
+import json
 import os
 from dotenv import load_dotenv
 
@@ -24,9 +25,7 @@ api_key_input = st.sidebar.text_input(
     value=os.getenv("GEMINI_API_KEY", "")
 )
 
-if api_key_input:
-    genai.configure(api_key=api_key_input)
-else:
+if not api_key_input:
     st.sidebar.warning("⚠️ Please enter your Gemini API Key to continue.")
 
 st.sidebar.markdown("---")
@@ -54,7 +53,7 @@ colloquial_input = st.text_area(
     placeholder="Example: Nan thaan kathi eduthu kuthinen, adhu selva layer la olichi vechiruken..."
 )
 
-# System Prompt Context (Appended directly to prompt to support older API versions)
+# System Prompt Context
 IO_SYSTEM_PROMPT = """
 **Role:** Senior Investigation Officer (IO) & Legal Drafting Expert (Tamil Nadu Police Standard).
 **Task:** Generate 100% Legally Admissible Confession Statements in Formal Tamil.
@@ -69,9 +68,6 @@ IO_SYSTEM_PROMPT = """
 - Potential Defense Loopholes (வழக்கின் ஓட்டைகள்).
 - Professional Confession Draft (தூய தமிழ் நீதிமன்ற நடைமுறை).
 - Mahazar/Recovery Checklist (IO-க்கான குறிப்புகள்).
-
------------------------------
-**USER INPUT TO CONVERT:**
 """
 
 # Generation Logic
@@ -81,31 +77,53 @@ if st.button("Generate Legal Confession Draft", type="primary"):
     elif not colloquial_input.strip():
         st.warning("⚠️ Please provide the input case details.")
     else:
-        with st.spinner("Drafting Confession Statement..."):
+        with st.spinner("Drafting Confession Statement bypasses Streamlit limits..."):
             try:
-                # Using gemini-pro which is universally supported across all API keys
-                model = genai.GenerativeModel("gemini-pro")
+                # Direct REST API call bypassing any older library versions in Streamlit
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key_input}"
                 
-                # Combine System Prompt with User Input to avoid 'system_instruction' dependency
-                full_prompt = IO_SYSTEM_PROMPT + colloquial_input
+                payload = {
+                    "systemInstruction": {
+                        "parts": [{"text": IO_SYSTEM_PROMPT}]
+                    },
+                    "contents": [{
+                        "parts": [{"text": colloquial_input}]
+                    }],
+                    "generationConfig": {
+                        "temperature": 0.3
+                    }
+                }
                 
-                # Generate Content
-                response = model.generate_content(full_prompt)
+                headers = {'Content-Type': 'application/json'}
                 
-                st.success("✅ Draft Generated Successfully!")
-                st.markdown("---")
+                response = requests.post(url, headers=headers, data=json.dumps(payload))
                 
-                # Output Sections
-                st.header("2. Generated Draft & Analysis")
-                st.markdown(response.text)
-                
-                # Download Button
-                st.download_button(
-                    label="Download Draft (Text)",
-                    data=response.text,
-                    file_name="confession_draft.txt",
-                    mime="text/plain"
-                )
+                if response.status_code == 200:
+                    result = response.json()
+                    
+                    # Check if there are candidates
+                    if 'candidates' in result and len(result['candidates']) > 0:
+                        draft = result['candidates'][0]['content']['parts'][0]['text']
+                        
+                        st.success("✅ Draft Generated Successfully!")
+                        st.markdown("---")
+                        
+                        # Output Sections
+                        st.header("2. Generated Draft & Analysis")
+                        st.markdown(draft)
+                        
+                        # Download Button
+                        st.download_button(
+                            label="Download Draft (Text)",
+                            data=draft,
+                            file_name="confession_draft.txt",
+                            mime="text/plain"
+                        )
+                    else:
+                        st.error("❌ API returned an empty response. Please review your input.")
+                else:
+                    error_msg = response.json().get('error', {}).get('message', 'Unknown Error')
+                    st.error(f"❌ API Error: {response.status_code} - {error_msg}")
 
             except Exception as e:
                 st.error(f"❌ An error occurred: {str(e)}")
